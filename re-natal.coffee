@@ -39,6 +39,7 @@ interfaceConf   =
     sources:
       ios:     ["core.cljs"]
       android: ["core.cljs"]
+      windows: ["core.cljs"]
       common:  ["handlers.cljs", "subs.cljs", "db.cljs"]
       other:   []
     deps:      ['[reagent "0.5.1" :exclusions [cljsjs/react]]'
@@ -51,6 +52,7 @@ interfaceConf   =
     sources:
       ios:     ["core.cljs"]
       android: ["core.cljs"]
+      windows: ["core.cljs"]
       common:  ["events.cljs", "subs.cljs", "db.cljs"]
       other:   [["reagent_dom.cljs","reagent/dom.cljs"], ["reagent_dom_server.cljs","reagent/dom/server.cljs"]]
     deps:      ['[reagent "0.6.0" :exclusions [cljsjs/react cljsjs/react-dom cljsjs/react-dom-server]]'
@@ -63,6 +65,7 @@ interfaceConf   =
     sources:
       ios:     ["core.cljs"]
       android: ["core.cljs"]
+      windows: ["core.cljs"]
       common:  ["state.cljs"]
       other:   [["support.cljs","re_natal/support.cljs"]]
     deps:      ['[org.omcljs/om "1.0.0-alpha41" :exclusions [cljsjs/react cljsjs/react-dom]]']
@@ -74,6 +77,7 @@ interfaceConf   =
     sources:
       ios: ["core.cljs"]
       android: ["core.cljs"]
+      windows: ["core.cljs"]
       common:  []
       other:   [["sablono_compiler.clj","sablono/compiler.clj"],["support.cljs","re_natal/support.cljs"]]
     deps:      ['[rum "0.9.1" :exclusions [cljsjs/react cljsjs/react-dom sablono]]']
@@ -85,7 +89,7 @@ defaultInterface = 'reagent6'
 defaultEnvRoots  =
   dev: 'env/dev'
   prod: 'env/prod'
-platforms = ['ios', 'android']
+platforms = ['ios', 'android', 'windows']
 
 log = (s, color = 'green') ->
   console.log chalk[color] s
@@ -168,6 +172,7 @@ generateConfig = (interfaceName, projName) ->
     name:   projName
     interface: interfaceName
     androidHost: "localhost"
+    windowsHost: "localhost"
     iosHost: "localhost"
     envRoots: defaultEnvRoots
     modules: []
@@ -188,7 +193,7 @@ writeConfig = (config) ->
         message
 
 verifyConfig = (config) ->
-  if !config.androidHost? || !config.modules? || !config.imageDirs? || !config.interface? || !config.iosHost? || !config.envRoots?
+  if !config.androidHost? || !config.modules? || !config.imageDirs? || !config.interface? || !config.iosHost? || !config.envRoots? || !config.windowsHost?
     throw new Error 're-natal project needs to be upgraded, please run: re-natal upgrade'
   config
 
@@ -216,7 +221,7 @@ scanImageDir = (dir) ->
     .filter (path) -> fs.statSync(path).isFile()
     .filter (path) -> removeExcludeFiles(path)
     .map (path) -> path.replace /@2x|@3x/i, ''
-    .map (path) -> path.replace new RegExp(".(android|ios)" + fpath.extname(path) + "$", "i"), fpath.extname(path)
+    .map (path) -> path.replace new RegExp(".(android|ios|windows)" + fpath.extname(path) + "$", "i"), fpath.extname(path)
     .filter (v, idx, slf) -> slf.indexOf(v) == idx
 
   dirs = fs.readdirSync(dir)
@@ -284,40 +289,31 @@ deviceTypeIsIpAddress = (deviceType, allowedTypes) ->
     deviceType
 
 copyDevEnvironmentFiles = (interfaceName, projNameHyph, projName, devEnvRoot, devHost) ->
-  fs.mkdirpSync "#{devEnvRoot}/env/ios"
-  fs.mkdirpSync "#{devEnvRoot}/env/android"
-
   userNsPath = "#{devEnvRoot}/user.clj"
   fs.copySync("#{resources}/user.clj", userNsPath)
 
-  mainIosDevPath = "#{devEnvRoot}/env/ios/main.cljs"
-  mainAndroidDevPath = "#{devEnvRoot}/env/android/main.cljs"
-
   cljsDir = interfaceConf[interfaceName].cljsDir
-  fs.copySync("#{resources}/#{cljsDir}/main_dev.cljs", mainIosDevPath)
-  edit mainIosDevPath, [[projNameHyphRx, projNameHyph], [projNameRx, projName], [platformRx, "ios"], [devHostRx, devHost] ]
-  fs.copySync("#{resources}/#{cljsDir}/main_dev.cljs", mainAndroidDevPath)
-  edit mainAndroidDevPath, [[projNameHyphRx, projNameHyph], [projNameRx, projName], [platformRx, "android"], [devHostRx, devHost]]
+
+  platforms.forEach (p) ->
+    fs.mkdirpSync "#{devEnvRoot}/env/#{p}"
+    mainDevPath = "#{devEnvRoot}/env/#{p}/main.cljs"
+    fs.copySync("#{resources}/#{cljsDir}/main_dev.cljs", mainDevPath)
+    edit mainDevPath, [[projNameHyphRx, projNameHyph], [projNameRx, projName], [platformRx, p], [devHostRx, devHost] ]
 
 copyProdEnvironmentFiles = (interfaceName, projNameHyph, projName, prodEnvRoot) ->
-  fs.mkdirpSync "#{prodEnvRoot}/env/ios"
-  fs.mkdirpSync "#{prodEnvRoot}/env/android"
-
-  mainIosProdPath = "#{prodEnvRoot}/env/ios/main.cljs"
-  mainAndroidProdPath = "#{prodEnvRoot}/env/android/main.cljs"
-
   cljsDir = interfaceConf[interfaceName].cljsDir
-  fs.copySync("#{resources}/#{cljsDir}/main_prod.cljs", mainIosProdPath)
-  edit mainIosProdPath, [[projNameHyphRx, projNameHyph], [projNameRx, projName], [platformRx, "ios"]]
-  fs.copySync("#{resources}/#{cljsDir}/main_prod.cljs", mainAndroidProdPath)
-  edit mainAndroidProdPath, [[projNameHyphRx, projNameHyph], [projNameRx, projName], [platformRx, "android"]]
+  platforms.forEach (p) ->
+    fs.mkdirpSync "#{prodEnvRoot}/env/#{p}"
+    mainProdPath = "#{prodEnvRoot}/env/#{p}/main.cljs"
+    fs.copySync("#{resources}/#{cljsDir}/main_prod.cljs", mainProdPath)
+    edit mainProdPath, [[projNameHyphRx, projNameHyph], [projNameRx, projName], [platformRx, p]]
 
 copyFigwheelBridge = (projNameUs) ->
   fs.copySync("#{resources}/figwheel-bridge.js", "./figwheel-bridge.js")
   edit "figwheel-bridge.js", [[projNameUsRx, projNameUs]]
 
 updateGitIgnore = () ->
-  fs.appendFileSync(".gitignore", "\n# Generated by re-natal\n#\nindex.android.js\nindex.ios.js\ntarget/\n")
+  fs.appendFileSync(".gitignore", "\n# Generated by re-natal\n#\n" + platforms.map (p) -> "index.#{p}.js\n" + "target/\n")
   fs.appendFileSync(".gitignore", "\n# Figwheel\n#\nfigwheel_server.log")
 
 patchReactNativePackager = () ->
@@ -409,6 +405,8 @@ init = (interfaceName, projName) ->
         'react-native': rnVersion
         # Fixes issue with packager 'TimeoutError: transforming ... took longer than 301 seconds.'
         'babel-plugin-transform-es2015-block-scoping': '6.15.0'
+      devDependencies:
+        "rnpm-plugin-windows": "^0.2.3"
     , null, 2
 
     exec 'npm i'
@@ -481,12 +479,11 @@ generateRequireModulesCode = (modules) ->
     jsCode += "modules['#{m}']=require('#{m}');";
   jsCode += '\n'
 
-updateFigwheelUrls = (devEnvRoot, androidHost, iosHost) ->
-  mainAndroidDevPath = "#{devEnvRoot}/env/android/main.cljs"
-  edit mainAndroidDevPath, [[figwheelUrlRx, "ws://#{androidHost}:"]]
-
-  mainIosDevPath = "#{devEnvRoot}/env/ios/main.cljs"
-  edit mainIosDevPath, [[figwheelUrlRx, "ws://#{iosHost}:"]]
+updateFigwheelUrls = (devEnvRoot, devHostMap) ->
+  Object.keys(devHostMap).forEach (platform) ->
+    devHost = devHostMap[platform];
+    mainDevPath = "#{devEnvRoot}/env/#{platform}/main.cljs"
+    edit mainDevPath, [[figwheelUrlRx, "ws://#{devHost}:"]]
 
 # Current RN version (0.29.2) has no host in AppDelegate.m maybe docs are outdated?
 updateIosAppDelegate = (projName, iosHost) ->
@@ -522,7 +519,8 @@ generateDevScripts = () ->
 
     androidDevHost = config.androidHost
     iosDevHost = config.iosHost
-    devHost =  {'android' : androidDevHost, 'ios' : iosDevHost}
+    windowsDevHost = config.windowsHost
+    devHost =  {'android' : androidDevHost, 'ios' : iosDevHost, "windows" : windowsDevHost}
 
     for platform in platforms
       moduleMap = generateRequireModulesCode(platformModulesAndImages(config, platform))
@@ -533,9 +531,10 @@ generateDevScripts = () ->
     updateIosRCTWebSocketExecutor(iosDevHost)
     log "Host in RCTWebSocketExecutor.m was updated"
 
-    updateFigwheelUrls(devEnvRoot, androidDevHost, iosDevHost)
+    updateFigwheelUrls(devEnvRoot, devHost)
     log 'Dev server host for iOS: ' + iosDevHost
     log 'Dev server host for Android: ' + androidDevHost
+    log 'Dev server host for Windows: ' + windowsDevHost
 
   catch {message}
     logErr \
@@ -563,6 +562,9 @@ doUpgrade = (config) ->
 
   unless config.iosHost
     config.iosHost = "localhost"
+
+  unless config.windowsHost
+    config.windowsHost = "localhost"
 
   unless config.envRoots
     config.envRoots = defaultEnvRoots

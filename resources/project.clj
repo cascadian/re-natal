@@ -8,7 +8,7 @@
                            $INTERFACE_DEPS$]
             :plugins [[lein-cljsbuild "1.1.4"]
                       [lein-figwheel "0.5.8"]]
-            :clean-targets ["target/" "index.ios.js" "index.android.js"]
+            :clean-targets ["target/" "index.ios.js" "index.android.js" "index.windows.js"]
             :aliases {"prod-build" ^{:doc "Recompile code with prod profile."}
                                    ["do" "clean"
                                     ["with-profile" "prod" "cljsbuild" "once" ]]}
@@ -28,6 +28,13 @@
                                                       :compiler     {:output-to     "target/android/not-used.js"
                                                                      :main          "env.android.main"
                                                                      :output-dir    "target/android"
+                                                                     :optimizations :none}}
+                                                     {:id           "windows"
+                                                      :source-paths ["src" "env/dev"]
+                                                      :figwheel     true
+                                                      :compiler     {:output-to     "target/windows/not-used.js"
+                                                                     :main          "env.windows.main"
+                                                                     :output-dir    "target/windows"
                                                                      :optimizations :none}}]}
                              :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}}
                        :prod {:cljsbuild {:builds [{:id           "ios"
@@ -44,6 +51,15 @@
                                                     :compiler     {:output-to     "index.android.js"
                                                                    :main          "env.android.main"
                                                                    :output-dir    "target/android"
+                                                                   :static-fns    true
+                                                                   :optimize-constants true
+                                                                   :optimizations :simple
+                                                                   :closure-defines {"goog.DEBUG" false}}}
+                                                   {:id            "windows"
+                                                    :source-paths ["src" "env/prod"]
+                                                    :compiler     {:output-to     "index.windows.js"
+                                                                   :main          "env.windows.main"
+                                                                   :output-dir    "target/windows"
                                                                    :static-fns    true
                                                                    :optimize-constants true
                                                                    :optimizations :simple
